@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Visual Search</title>
+    <style>
+        /* General Styles */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #192c57;
+            color: #ffffff;
+            padding: 20px;
+            text-align: center;
+            margin: 0;
+        }
+        h1 {
+            color: #dd2831;
+            margin-bottom: 20px;
+        }
+        p {
+            font-size: 1.2em;
+        }
+
+        /* Image Preview Styles */
+        #preview {
+            max-width: 300px;
+            margin: 20px auto;
+            display: none;
+            border: 2px solid #dd2831;
+            border-radius: 10px;
+            padding: 10px;
+            background-color: #ffffff;
+        }
+        #preview img {
+            max-width: 100%;
+            border-radius: 5px;
+        }
+
+        /* Button Styles */
+        #uploadButton {
+            background-color: #dd2831;
+            color: #ffffff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-size: 1em;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        #uploadButton:hover {
+            background-color: #bf1f28;
+        }
+        #uploadButton.hidden {
+            display: none;
+        }
+
+        /* Results Section */
+        #results {
+            margin-top: 30px;
+            display: none;
+        }
+        .result {
+            background-color: #ffffff;
+            color: #192c57;
+            border: 1px solid #dd2831;
+            border-radius: 5px;
+            margin: 10px 0;
+            padding: 10px;
+            text-align: left;
+            display: inline-block;
+            width: 80%;
+        }
+        .hidden {
+            display: none;
+        }
+
+        /* Input Styles */
+        input[type="file"] {
+            display: block;
+            margin: 20px auto;
+            font-size: 1em;
+            padding: 5px;
+            cursor: pointer;
+            color: #192c57;
+            background-color: #ffffff;
+            border: 2px solid #dd2831;
+            border-radius: 5px;
+        }
+        input[type="file"]:hover {
+            border-color: #bf1f28;
+        }
+    </style>
+</head>
+<body>
+    <h1>Enhanced Visual Search</h1>
+    <p>Upload an image to find similar or related products:</p>
+    <input type="file" id="imageUpload" accept="image/*">
+    <div id="preview">
+        <h3 style="color: #192c57;">Image Preview:</h3>
+        <img id="previewImage" src="" alt="Preview">
+    </div>
+    <button id="uploadButton" class="hidden">Search Products</button>
+    <div id="results" class="hidden">
+        <h3>Search Results:</h3>
+        <div id="resultList"></div>
+    </div>
+    <script>
+        const imageUpload = document.getElementById('imageUpload');
+        const preview = document.getElementById('preview');
+        const previewImage = document.getElementById('previewImage');
+        const uploadButton = document.getElementById('uploadButton');
+        const results = document.getElementById('results');
+        const resultList = document.getElementById('resultList');
+
+        // Preview uploaded image
+        imageUpload.addEventListener('change', () => {
+            const file = imageUpload.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    previewImage.src = e.target.result;
+                    preview.style.display = 'block';
+                    uploadButton.classList.remove('hidden');
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Handle upload and interaction with backend
+        uploadButton.addEventListener('click', async () => {
+            const file = imageUpload.files[0];
+            if (!file) {
+                alert('Please select an image first.');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            uploadButton.textContent = 'Processing...';
+            uploadButton.disabled = true;
+
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to process image.');
+                }
+
+                const data = await response.json();
+                displayResults(data.similar_products);
+            } catch (error) {
+                alert(`Error: ${error.message}`);
+            } finally {
+                uploadButton.textContent = 'Search Products';
+                uploadButton.disabled = false;
+            }
+        });
+
+        // Display results
+        function displayResults(products) {
+            resultList.innerHTML = '';
+            results.classList.remove('hidden');
+
+            if (products && products.length > 0) {
+                products.forEach((product) => {
+                    const productDiv = document.createElement('div');
+                    productDiv.className = 'result';
+                    productDiv.innerHTML = `
+                        <strong>${product.name}</strong> (ID: ${product.product_id})<br>
+                        Similarity Score: ${product.similarity_score.toFixed(2)}
+                    `;
+                    resultList.appendChild(productDiv);
+                });
+            } else {
+                resultList.textContent = 'No similar products found.';
+            }
+        }
+    </script>
+</body>
+</html>
